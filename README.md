@@ -50,7 +50,8 @@ def read_consult():
     with open ('consults/consult.sql', 'r') as file:
         consult = file.read()
     return consult
-
+``
+``
 def get_dataset(connection_string):
     """
     Descripcion:
@@ -83,7 +84,8 @@ def groupFolioSustancia(df):
     """
     grupo = df.groupby(["FolioId" , "SustanciaId"]).agg(list).reset_index()
     return grupo
-
+``    
+``
 def groupFolioMotivo(df):
     """
     Descripción:
@@ -113,7 +115,8 @@ def procesar (grupo , list_columns):
             if len(grupo[col][i]) > 1:
                 grupo[col][i] = grupo[col][i][0]
     return grupo
-
+``
+``
 def modif (grupo):
     """
     Descripción:
@@ -127,7 +130,8 @@ def modif (grupo):
     list_columns = ["EntrevistaInicialSustanciaId" , "EdadInicio" , "OrdenConsumo" , "ComunPrimeraFormaAdministracionId" , "ComunSegundaFormaAdministracionId" , "ComunTerceraFormaAdministracionId" , "ComunAbstinenciaId" , "ComunUltimoConsumoId" , "Dosis"]
     grupo_pro = procesar(grupo,list_columns)
     return grupo_pro
-
+``
+``
 def modif2 (grupo):
     """
     Descripción:
@@ -154,7 +158,8 @@ def drop_rows (group_sep):
     """
     group_sep.drop_duplicates( subset = "FolioId" , keep = "first" , inplace = True)
     return group_sep
-
+``
+``
 def piv (grupo_mod , list_columns):
     """
     Descripción:
@@ -177,7 +182,8 @@ def piv (grupo_mod , list_columns):
                     group_sep[aux_name_col] = group_sep[col].iloc[i]
         df_complete = pd.concat([df_complete, group_sep])
     return df_complete
-
+``
+``
 def extract (x):
     """
     Descripción:
@@ -191,7 +197,8 @@ def extract (x):
     if isinstance(x , list):
         return x[0] if len(x) > 0 else None
     return x
-
+``
+``
 def trat (df_completemerge):
     """
     Descripción:
@@ -202,7 +209,8 @@ def trat (df_completemerge):
     
     for col in df_completemerge.columns:
         df_completemerge[col] = df_completemerge[col].apply(extract)
-
+``
+``
 def busqueda_Folio( df_completemerge, val_folio , ind_folio):
     """
     Descripción:
@@ -218,7 +226,8 @@ def busqueda_Folio( df_completemerge, val_folio , ind_folio):
     for ind , val in df_completemerge["FolioId"].items():
         if val == val_folio and ind != ind_folio:
             return ind
-
+``
+``
 def AcomDa (df_completemerge , ind , ind_igual):
     """
     Descripción:
@@ -242,7 +251,8 @@ def AcomDa (df_completemerge , ind , ind_igual):
             elif pd.notna(valor_1) and pd.isna(valor_2):
                 df_completemerge[col].iloc[ind_igual] = valor_1
         return df_completemerge
-
+``
+``
 def limp (df_completemerge):
     """
     Descripción:
@@ -291,7 +301,8 @@ def main(df):
     df_complete = limp(df_complete)
     drop_rows(df_complete)
     return df_complete
-
+``
+``
 connection_string = get_dataconn()
 df = get_dataset(connection_string)
 df.to_csv('dataset/SQLEntrevistaInicial.csv', index = False)

@@ -4,9 +4,8 @@ Centros de Integración Juvenil (CIJ) es una asociación civil mexicana, no lucr
 
 ### *Extraccion*
 La extracción es la primera fase del proceso ETL (Extract, Transform, Load), que se encarga de recopilar datos de diferentes sistemas fuente, como bases de datos relacionales (RDBMS) o sistemas de archivo. En esta fase, se extraen los datos necesarios para su posterior transformación y carga en un almacén de datos de destino.
-En esta parte se desarrollo la conexion a una base de datos utilizando la libreria pyodbc , esta libreria fue buscada y encontrada en https://github.com/mkleehammer/pyodbc.wiki.git sin embargo no pude encontrar la manera de citarlos.
-Posterior a conectarse a nuestro servidor se realizo una consulta donde extraemos las tablas que necesitamos para nuestro proyecto, el problema que se presenta es que un paciente puede registrar cualquier cantidad de sustancias como haya consumida en su vida, actualmente nosotros contamos con 83 sustancias y 1 relacionada a enfermedades mentales. Tenemos una tabla que guardas los datos personales de los pacientes y otra donde guardamos los registros por sustancias, entonces al hacer el join de estas sustancias por la variable FolioId (identificador unico) se duplicaban exponencialmente los folios. Para resolver este problema se realizo un script el cual agrupa a las variables que eran diferentes y asi poder realizar un pivote seguro sin tener que perder informacion.
-[text](README.md) ![Representacion Grafica Del Proceso De Extraccion](imagen/Extraccion-model.png)
+En esta parte se desarrollo la conexion a una base de datos utilizando la libreria pyodbc. Posterior a conectarse a nuestro servidor se realizo una consulta donde extraemos las tablas que necesitamos para nuestro proyecto, el problema que se presenta es que un paciente puede registrar cualquier cantidad de sustancias como haya consumida en su vida, actualmente nosotros contamos con 83 sustancias y 1 relacionada a enfermedades mentales. Tenemos una tabla que guardas los datos personales de los pacientes y otra donde guardamos los registros por sustancias, entonces al hacer el join de estas sustancias por la variable FolioId (identificador unico) se duplicaban exponencialmente los folios. Para resolver este problema se realizo un script el cual agrupa a las variables que eran diferentes y asi poder realizar un pivote seguro sin tener que perder informacion.
+![Representacion Grafica Del Proceso De Extraccion](imagen/Extraccion-model.png)
 
 ### *Codigo Extraccion*
 #### Proceso de consulta
@@ -304,5 +303,248 @@ for chunk in pd.read_csv("dataset/SQLEntrevistaInicial.csv", chunksize = chunksi
     df_final = pd.concat([df_final, df], ignore_index = True)
 df_final.to_csv('results/EntrevistaInicial.csv', index = False)
 ```
+### *Transformacion*
+La transformación es la segunda fase del proceso ETL (Extraer, Transformar, Cargar), que se encarga de modificar y preparar los datos extraídos de las fuentes para su carga en el sistema de destino. Esta fase es crítica para garantizar la calidad y consistencia de los datos.
+Los datos que generamos despues de realizar el pivot es nuestra base de datos con la que generaremos nuestra informacion. Se representara la informacion de diferentes formas.
+*tendencia*
+*perfiles*
+*sankey*
+#### *Tendencia*
+La grafica de tendencias la mostraremos por :
+semestre(1-2), año(2021-2024), unidad(total), categoria(DrogaImpacto-DrogaUltimoMes), Sustancias (Grupos)
+El resultado esperado Deberia ser una tabla como la siguiente: 
+![Csv Esperado Tendencias](imagen/ExampleResultTendencia.png)
 
+#### *Codigo*
+##### *Librerias*
+```
+import pandas as pd
+import warnings 
+import unidecode 
+import re
+```
+##### *Read data*
+```
+def read_data():
+    '''
+    Description:
+    Read the data from the files and return the dataframes
+    return: df, dfcc, dfc (dataframes) 
+    '''
+    df = pd.read_csv('results/EntrevistaInicial.csv')
+    return df
 
+def get_dict ():
+    '''
+    Description: Return a dictionary with the states
+    return: dict_Estados (dictionary)
+    '''
+
+    dict_Mes ={1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'}
+    
+    return dict_Mes
+```
+
+##### *Transform data*
+```
+def transform_data(df):
+    '''
+    Description: Transform the data from the dataframe
+    return: df (dataframe)
+    '''
+    
+    dict_Mes = get_dict()
+    df['MesRegistro'] = df['MesRegistro'].map(dict_Mes)
+    return df
+
+def split_date(df):
+    '''
+    Description: Split the date in year, month and day
+    return: df (dataframe)
+    '''
+    
+    df['FechaRegistro'] = pd.to_datetime(df['FechaRegistro'])
+    df['AñoRegistro'] = df['FechaRegistro'].dt.year
+    df['MesRegistro'] = df['FechaRegistro'].dt.month
+    df['DiaRegistro'] = df['FechaRegistro'].dt.day
+    df = transform_data(df)
+    return df
+
+def sem(df , lis_1sem, lis_2sem):
+    '''
+    Description: Create a column with the semester
+    return: df (dataframe)
+    '''
+    
+    df['Semestre'] = 0
+    for ind, val in df['MesRegistro'].items():
+        if val in lis_1sem:
+            df.loc[ind, 'Semestre'] = 1
+        elif val in lis_2sem:
+            df.loc[ind, 'Semestre'] = 2
+    return df
+```
+##### *Grupos Sustancias*
+```
+def group_sust():
+    '''
+    Description: Create a dictionary with the substances
+    return: dict_sust_inverso (dictionary)
+    '''
+    
+    dict_sust = {'Tabaco':(1,2) , 'Alcohol':(3,4,5,84), 'Marihuana':(6,7,8,9,10,11,),'Inalables':(24,25,26,27,28) , 'Cocaina':(12,13,14,15,86) , 'Metanfetaminas': (16,17,18,19,85) , 'OtrosEstimulantes':(19,20,21,22,23), 'Extasis':(22,50,51,48), 'Benzodiacepinas': (52,53) , 'OtrosDepresores': (54,55,56), 'Alucinogenos': (29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47), 'Heroina': (60,61), 'OpiodesSinteticos': (62,63,64,65,66,67), 'OpioDerivados': (57,58,59), 'UtilidadMedica': (68,69,70,71,72,73,74,75), 'SustanciasDeAbuso': (76,77,78,79,80,81,82), 'Otros': (83,10000)}
+    dict_sust_inverso = {}
+    for sustancia, numeros in dict_sust.items():
+        for numero in numeros:
+            dict_sust_inverso[numero] = sustancia
+    return dict_sust_inverso
+
+def mod_sust (df):
+    '''
+    Description: Modify the columns MayorImpactoSustanciaId
+    return: df (dataframe)
+    '''
+    
+    dict_sust = group_sust()
+    for col in df.columns:
+        if col.startswith('MayorImpactoSustanciaId'):
+            df[col] = df[col].map(dict_sust)
+    for col in df.columns:
+        if col.startswith('SustanciaI'):
+            df[col] = df[col].map(dict_sust)
+    return df
+```
+##### *Mod Data*
+```
+def mod_data(df):
+    '''
+    Description: Modify the data from the dataframe
+    return: df (dataframe)
+    '''
+    
+    df = split_date(df)
+    lista_1sem = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio']
+    lista_2sem = ['Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+    df = sem(df, lista_1sem, lista_2sem)
+    df = mod_sust(df)
+    df['Edad'] = df['Edad'].astype(str)
+    df['Edad'] = df['Edad'].apply(unidecode.unidecode)
+    df['Edad'] = df['Edad'].str.replace('+' , '' )
+    df['Edad'] = df['Edad'].str.replace('*' , '')
+    df['Edad'] = df['Edad'].str.replace('.0' , '')
+    df['Edad'] = df['Edad'].replace('', '0')
+    df['Edad'] = df['Edad'].astype(float)
+
+    return df
+
+def range_age(df):
+    '''
+    Description: Create a column with the age range
+    return: df (dataframe)
+    '''
+    
+    df['Edad'] = pd.cut(df['Edad'], bins=[0, 11, 20, 30, 40, 50, 60, 150], labels=['0-10', '11-20', '21-30', '31-40', '41-50', '51-60', '65+'])
+    return df
+
+def gen_valueof_column():
+    '''
+    Description: Create a dictionary
+    return: value_to_column (dictionary)
+    '''
+    value_to_column = {
+        'Tabaco': 'Tabaco',
+        'Alcohol': 'Alcohol',
+        'Marihuana': 'Marihuana',
+        'Inalables': 'Inalables',
+        'Cocaina': 'Cocaina',
+        'Metanfetaminas': 'Metanfetaminas',
+        'OtrosEstimulantes': 'OtrosEstimulantes',
+        'Extasis': 'Extasis',
+        'Benzodiacepinas': 'Benzodiacepinas',
+        'OtrosDepresores': 'OtrosDepresores',
+        'Alucinogenos': 'Alucinogenos',
+        'Heroina': 'Heroina',
+        'OpiodesSinteticos': 'OpiodesSinteticos',
+        'OpioDerivados': 'OpioDerivados',
+        'UtilidadMedica': 'UtilidadMedica',
+        'SustanciasDeAbuso': 'SustanciasDeAbuso',
+        'Otros': 'Otros'
+    }
+    return value_to_column
+```
+##### *Desarrollo Tendencias Droga Impacto*
+```
+def tendencias_MI(df):
+    df_result = pd.DataFrame(columns = ['Semestre', 'Año' , 'Unidad' , 'Sexo' , 'Categoria', 'Tabaco' , 'Alcohol', 'Marihuana','Inalables', 'Cocaina' , 'Metanfetaminas', 'OtrosEstimulantes', 'Extasis', 'Benzodiacepinas', 'OtrosDepresores', 'Alucinogenos', 'Heroina', 'OpiodesSinteticos', 'OpioDerivados', 'UtilidadMedica', 'SustanciasDeAbuso', 'Otros'])
+    if df_result.empty:
+        df_result.loc[0] = 0    
+    for col in df.columns:
+        if col.startswith('MayorImpactoSustanciaId'):
+            value_to_column = gen_valueof_column()
+            for ind, val in df[col].items():
+                if val in value_to_column:
+                    df_result.loc[0, value_to_column[val]] += 1
+    df_result['Semestre'][0] = df['Semestre'].iloc[0]
+    df_result['Año'][0] = df['AñoRegistro'].iloc[0]
+    df_result['Unidad'][0] = 'Total'
+    df_result['Categoria'][0] = 'Droga impacto'
+    df_result['Sexo'][0] = df['SexoId'].iloc[0]
+    return df_result
+
+def group_data(df):
+    '''     
+    Description: Group the data by semester
+    return: df_result (dataframe)
+    '''
+    
+    df_result = pd.DataFrame()
+    for val , group in df.groupby(['Semestre', 'AñoRegistro', 'SexoId']):
+        df_result = pd.concat([df_result, tendencias_MI(group)])
+    return df_result
+```
+##### *Desarrollo Tendencias Ultimo Mes*
+```
+def tendencias_UM(df):
+    df_result = pd.DataFrame(columns = ['Semestre', 'Año' , 'Unidad' , 'Sexo' , 'Categoria', 'Tabaco' , 'Alcohol', 'Marihuana','Inalables', 'Cocaina' , 'Metanfetaminas', 'OtrosEstimulantes', 'Extasis', 'Benzodiacepinas', 'OtrosDepresores', 'Alucinogenos', 'Heroina', 'OpiodesSinteticos', 'OpioDerivados', 'UtilidadMedica', 'SustanciasDeAbuso', 'Otros'])
+    if df_result.empty:
+        df_result.loc[0] = 0    
+    value_to_column = gen_valueof_column()
+    for col in df.columns:
+        if col.startswith('SustanciaI'):
+            exp = re.search(r'SustanciaId(\d+)', col)
+            if exp:
+                if df['ComunAbstinenciaId'+str(exp.group(1))].iloc[0] in range (1,4):
+                    for ind, val in df[col].items():
+                        if val in value_to_column:
+                            df_result.loc[0, value_to_column[val]] += 1
+    df_result['Semestre'][0] = df['Semestre'].iloc[0]
+    df_result['Año'][0] = df['AñoRegistro'].iloc[0]
+    df_result['Unidad'][0] = 'Total'
+    df_result['Categoria'][0] = 'Droga Ultimo Mes'
+    df_result['Sexo'][0] = df['SexoId'].iloc[0]
+    return df_result
+
+def group_dataUM(df):
+    '''     
+    Description: Group the data by semester
+    return: df_result (dataframe)
+    '''
+    
+    df_result = pd.DataFrame()
+    for val , group in df.groupby(['Semestre', 'AñoRegistro', 'SexoId']):
+        df_result = pd.concat([df_result, tendencias_UM(group)])
+    return df_result
+```
+##### *Main*
+```
+def main ():
+    '''
+    Description: Main function
+    '''
+    df = read_data()
+    df = mod_data(df)
+    df = range_age(df)
+    df1 = group_data(df)
+    df2 = group_dataUM(df)
+    create_csv(df1, df2)
+```

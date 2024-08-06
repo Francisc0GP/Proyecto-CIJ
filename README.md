@@ -548,3 +548,188 @@ def main ():
     df2 = group_dataUM(df)
     create_csv(df1, df2)
 ```
+### *Perfiles*
+Se plantean dos perfiles uno por edad y otro por nivel escolar, la tabla que se propone es la siguiente
+Semestre,Año,Unidad,Sexo,Sustancias,Escolaridad,Total. La tabla deberia ser parecida a lo siguiente
+![Ejemplo Tabla Perfiles Escolaridad](imagen/exampleperfilesEsco.png)
+#### *Codigo*
+##### *Librerias*
+```
+import pandas as pd
+import warnings
+import unidecode
+```
+##### *Read Data*
+```
+def read_data():
+    '''
+    Description:
+    Read the data from the files and return the dataframes
+    return: df, dfcc, dfc (dataframes) 
+    '''
+    df = pd.read_csv('results/EntrevistaInicial.csv')
+    return df
+
+def get_dict ():
+    '''
+    Description: Return a dictionary with the states
+    return: dict_Estados (dictionary)
+    '''
+
+    dict_Mes ={1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'}
+    return dict_Mes
+```
+##### *Transform and split*
+```
+def transform_data(df):
+    '''
+    Description: Transform the data from the dataframe
+    return: df (dataframe)
+    '''
+    
+    dict_Mes = get_dict()
+    df['MesRegistro'] = df['MesRegistro'].map(dict_Mes)
+    return df
+
+def split_date(df):
+    '''
+    Description: Split the date in year, month and day
+    return: df (dataframe)
+    '''
+    
+    df['FechaRegistro'] = pd.to_datetime(df['FechaRegistro'])
+    df['AñoRegistro'] = df['FechaRegistro'].dt.year
+    df['MesRegistro'] = df['FechaRegistro'].dt.month
+    df['DiaRegistro'] = df['FechaRegistro'].dt.day
+    df = transform_data(df)
+    return df
+
+def sem(df , lis_1sem, lis_2sem):
+    '''
+    Description: Create a column with the semester
+    return: df (dataframe)
+    '''
+    
+    df['Semestre'] = 0
+    for ind, val in df['MesRegistro'].items():
+        if val in lis_1sem:
+            df.loc[ind, 'Semestre'] = 1
+        elif val in lis_2sem:
+            df.loc[ind, 'Semestre'] = 2
+    return df
+
+```
+##### *Grupos*
+```
+def group_sust():
+    '''
+    Description: Create a dictionary with the substances
+    return: dict_sust_inverso (dictionary)
+    '''
+    
+    dict_sust = {'Tabaco':(1,2) , 'Alcohol':(3,4,5,84), 'Marihuana':(6,7,8,9,10,11,),'Inalables':(24,25,26,27,28) , 'Cocaina':(12,13,14,15,86) , 'Metanfetaminas': (16,17,18,19,85) , 'OtrosEstimulantes':(19,20,21,22,23), 'Extasis':(22,50,51,48), 'Benzodiacepinas': (52,53) , 'OtrosDepresores': (54,55,56), 'Alucinogenos': (29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47), 'Heroina': (60,61), 'OpiodesSinteticos': (62,63,64,65,66,67), 'OpioDerivados': (57,58,59), 'UtilidadMedica': (68,69,70,71,72,73,74,75), 'SustanciasDeAbuso': (76,77,78,79,80,81,82), 'Otros': (83,10000)}
+    dict_sust_inverso = {}
+    for sustancia, numeros in dict_sust.items():
+        for numero in numeros:
+            dict_sust_inverso[numero] = sustancia
+    return dict_sust_inverso
+
+def range_age(df):
+    '''
+    Description: Create a column with the age range
+    return: df (dataframe)
+    '''
+    
+    df['Edad'] = pd.cut(df['Edad'], bins=[0, 11, 20, 30, 40, 50, 60, 150], labels=['0-10', '11-20', '21-30', '31-40', '41-50', '51-60', '65+'])
+    df['ComunEscolaridadId'] = pd.cut(df['ComunEscolaridadId'] , bins = [1,3,5,7,11,15], labels = ['Primaria', 'Secundaria', 'Preparatoria', 'Licenciatura', 'Posgrado'])
+    return df
+
+def group_data(df):
+    '''     
+    Description: Group the data by semester
+    return: df_result (dataframe)
+    '''
+    
+    df_result = pd.DataFrame()
+    for val , group in df.groupby(['Semestre', 'AñoRegistro', 'SexoId','MayorImpactoSustanciaId','ComunEscolaridadId']):
+        df_result = pd.concat([df_result, tendencias(val, group)])
+    return df_result
+```
+##### *Mod Data*
+```
+def mod_sust (df):
+    '''
+    Description: Modify the columns MayorImpactoSustanciaId
+    return: df (dataframe)
+    '''
+    
+    dict_sust = group_sust()
+    for col in df.columns:
+        if col.startswith('MayorImpactoSustanciaId'):
+            df[col] = df[col].map(dict_sust)
+    for col in df.columns:
+        if col.startswith('SustanciaI'):
+            df[col] = df[col].map(dict_sust)
+    return df
+
+def mod_data(df):
+    '''
+    Description: Modify the data from the dataframe
+    return: df (dataframe)
+    '''
+    
+    df = split_date(df)
+    lista_1sem = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio']
+    lista_2sem = ['Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+    df = sem(df, lista_1sem, lista_2sem)
+    df = mod_sust(df)
+    df['Edad'] = df['Edad'].astype(str)
+    df['Edad'] = df['Edad'].apply(unidecode.unidecode)
+    df['Edad'] = df['Edad'].str.replace('+' , '' )
+    df['Edad'] = df['Edad'].str.replace('*' , '')
+    df['Edad'] = df['Edad'].str.replace('.0' , '')
+    df['Edad'] = df['Edad'].replace('', '0')
+    df['Edad'] = df['Edad'].astype(float)
+
+    return df
+```
+##### *Perfil*
+```
+def tendencias (val2, group):
+    '''
+    Description: Create a dataframe with the trends
+    return: df_result (dataframe)
+    '''
+
+    df_result = pd.DataFrame(columns = ['Semestre', 'Año' , 'Unidad' , 'Sexo' ,'Sustancias', 'Escolaridad' , 'Total'])
+    if df_result.empty:
+        df_result.loc[0] = 0
+    count = 0
+    for ind , val in group['MayorImpactoSustanciaId'].items():
+        if val == str(val2[3]):
+            count += 1
+    df_result['Semestre'][0] = group['Semestre'].iloc[0]
+    df_result['Año'][0] = group['AñoRegistro'].iloc[0]
+    df_result['Unidad'][0] = 'Total'
+    df_result['Sexo'][0] = group['SexoId'].iloc[0]
+    df_result['Escolaridad'][0] = group['ComunEscolaridadId'].iloc[0]
+    df_result['Sustancias'][0] = val2[3]
+    df_result['Total'][0] = count
+    return df_result
+```
+##### *Main*
+```
+def main ():
+    '''
+    Description: Main function
+    '''
+    df = read_data()
+    df = mod_data(df)
+    df = range_age(df)
+    df = group_data(df)
+    df.to_csv('results/escolar.csv', index=False, encoding='utf-8')
+    return df
+
+```
+### *Sankey*
+En Proceso....

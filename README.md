@@ -11,7 +11,7 @@ Posterior a conectarse a nuestro servidor se realizo una consulta donde extraemo
 ### *Codigo Extraccion*
 #### Proceso de consulta
 ##### *Librerias*
-``
+`
 import pyodbc
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
@@ -21,7 +21,7 @@ import warnings
 import re
 ``
 ##### *Proceso de obtencion de datos DB*
-``
+`
 def get_dataconn():
     """
     Descripcion:

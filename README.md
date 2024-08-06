@@ -309,6 +309,15 @@ Los datos que generamos despues de realizar el pivot es nuestra base de datos co
 *tendencia*
 *perfiles*
 *sankey*
+El proceso resulta en obtener los archvios csv listos para cargarse a un sistema de almacenamiento donde en este almacenamiento se generara una nueva consulta a las tablas sql y poder realizar la visualizacion en el ambiente web.
+![Diagrama transformacion](imagen/transform.png)
+### *Tendencias*
+Una tendencia es la dirección general en la que algo se mueve o cambia. En el contexto de los datos, las tendencias representan la dirección general en la que los datos están cambiando. Las tendencias pueden ser útiles para predecir eventos futuros.
+En este caso se generara una tabla con las tendencias de las sustancias consumidas en los ultimos meses, la tendencia se mostrara por semestre, año, unidad, sexo, categoria, sustancias y total. 
+![Representacion Grafica Del Proceso De Tendencias](imagen/tendencia-model.png)
+### *Perfiles*
+Un perfil es una descripción de un conjunto de datos. En el contexto de los datos, un perfil es una descripción de los datos que incluye información sobre la estructura, el contenido y la calidad de los datos. Los perfiles de datos son útiles para comprender los datos y para identificar problemas o errores en los datos.
+En este caso se generaran dos perfiles uno por edad y otro por nivel escolar.
 #### *Tendencia*
 La grafica de tendencias la mostraremos por :
 semestre(1-2), año(2021-2024), unidad(total), categoria(DrogaImpacto-DrogaUltimoMes), Sustancias (Grupos)

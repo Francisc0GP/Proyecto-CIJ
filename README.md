@@ -741,4 +741,13 @@ def main ():
 
 ```
 ### *Sankey*
-En Proceso....
+Un diagrama de sankey es un tipo de diagrama de flujo que muestra cómo se mueve algo de un lugar a otro. En el contexto de los datos, un diagrama de sankey muestra cómo se mueven los datos de una fuente a un destino. Los diagramas de sankey son útiles para visualizar el flujo de datos a través de un sistema.
+En este caso se generara un diagrama de sankey para ver el flujo de los pacientes por sexo, edad, unidad y sustancias consumidas.
+![alt text](imagen/sankey.png)
+
+
+### *Cargar*
+La carga es la tercera fase del proceso ETL (Extraer, Transformar, Cargar), que se encarga de cargar los datos transformados en el sistema de destino. Esta fase es crítica para garantizar que los datos se carguen de manera eficiente y precisa en el sistema de destino.
+Los datos que se generan despues de realizar la transformacion se cargaran a un sistema de almacenamiento para poder ser consultados en un ambiente web.
+En proceso...
+
